@@ -1,0 +1,15 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+
+# pnpm 11 blocks postinstall scripts unless approved. These four genuinely
+# need theirs:
+#   prisma / @prisma/client / @prisma/engines -> download the query engine
+#   esbuild                                   -> fetch its platform binary (vite, vitest)
+#   msgpackr-extract                          -> optional native speedup for BullMQ
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  esbuild: true
+  msgpackr-extract: true
+  prisma: true

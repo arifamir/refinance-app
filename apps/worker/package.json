@@ -1,0 +1,18 @@
+{
+  "name": "@refi/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=../../.env src/index.ts",
+    "start": "tsx --env-file=../../.env src/index.ts",
+    "start:prod": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@refi/adapters": "workspace:*",
+    "@refi/db": "workspace:*",
+    "@refi/domain": "workspace:*",
+    "bullmq": "^5.34.0",
+    "ioredis": "^5.4.1"
+  }
+}

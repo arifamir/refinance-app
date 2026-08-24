@@ -1,0 +1,11 @@
+node_modules
+**/node_modules
+**/dist
+.git
+.env
+.env.local
+*.log
+coverage
+packages/db/generated
+apps/web/dist
+scratchpad

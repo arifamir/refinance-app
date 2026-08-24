@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="1754" viewBox="0 0 1240 1754" font-family="Helvetica, Arial, sans-serif">
+  <rect width="1240" height="1754" fill="#f4f4f2"/>
+  <rect x="60" y="60" width="1120" height="1634" fill="#ffffff"/>
+
+  <!-- watermark: this must never be mistakable for a genuine record -->
+  <text x="620" y="900" font-size="62" fill="#e8322d" fill-opacity="0.13" font-weight="700"
+        text-anchor="middle" transform="rotate(-27 620 900)">SAMPLE — NOT A REAL STATEMENT</text>
+
+  <!-- header -->
+  <rect x="60" y="60" width="1120" height="168" fill="#10243e"/>
+  <circle cx="146" cy="144" r="34" fill="#3d7bd6"/>
+  <text x="146" y="156" font-size="30" font-weight="700" fill="#ffffff" text-anchor="middle">NB</text>
+  <text x="206" y="132" font-size="34" font-weight="700" fill="#ffffff">Nordax Bank</text>
+  <text x="206" y="172" font-size="19" fill="#9db4d0">Konsumentkredit · Månadsbesked</text>
+  <text x="1120" y="132" font-size="19" fill="#9db4d0" text-anchor="end">Period</text>
+  <text x="1120" y="172" font-size="26" font-weight="600" fill="#ffffff" text-anchor="end">2026-06-01 – 2026-06-30</text>
+
+  <!-- test-fixture banner -->
+  <rect x="60" y="228" width="1120" height="52" fill="#fdeceb"/>
+  <text x="90" y="262" font-size="21" font-weight="600" fill="#b3261e">
+    SYNTHETIC TEST DOCUMENT — generated for local OCR testing. Not issued by any bank.
+  </text>
+
+  <!-- account holder -->
+  <text x="90" y="352" font-size="17" fill="#6b7280" letter-spacing="1.4">KONTOHAVARE</text>
+  <text x="90" y="392" font-size="27" font-weight="600" fill="#111827">Test Testsson</text>
+  <text x="90" y="428" font-size="21" fill="#374151">Testgatan 12, 113 30 Stockholm</text>
+  <text x="90" y="462" font-size="21" fill="#374151">Personnummer: 19850101-XXXX</text>
+
+  <text x="700" y="352" font-size="17" fill="#6b7280" letter-spacing="1.4">KONTONUMMER</text>
+  <text x="700" y="392" font-size="27" font-weight="600" fill="#111827">9482 55 013 27</text>
+  <text x="700" y="428" font-size="17" fill="#6b7280" letter-spacing="1.4">OCR / REFERENS</text>
+  <text x="700" y="462" font-size="21" fill="#374151">4 827 551 013 279</text>
+
+  <line x1="90" y1="500" x2="1150" y2="500" stroke="#e5e7eb" stroke-width="2"/>
+
+  <!-- the three fields the app asks for -->
+  <rect x="90" y="536" width="1060" height="196" fill="#f8fafc" stroke="#dbe3ec" stroke-width="2"/>
+
+  <text x="130" y="590" font-size="18" fill="#6b7280" letter-spacing="1.4">AKTUELL LÅNESKULD</text>
+  <text x="130" y="656" font-size="58" font-weight="700" fill="#10243e">84 151,00 kr</text>
+  <text x="130" y="694" font-size="19" fill="#6b7280">Outstanding loan balance</text>
+
+  <line x1="700" y1="576" x2="700" y2="692" stroke="#dbe3ec" stroke-width="2"/>
+
+  <text x="750" y="590" font-size="18" fill="#6b7280" letter-spacing="1.4">NOMINELL RÄNTA</text>
+  <text x="750" y="656" font-size="58" font-weight="700" fill="#b3261e">21,95 %</text>
+  <text x="750" y="694" font-size="19" fill="#6b7280">Annual interest rate (APR)</text>
+
+  <!-- statement detail -->
+  <text x="90" y="800" font-size="24" font-weight="700" fill="#111827">Kontosammanställning</text>
+
+  <rect x="90" y="826" width="1060" height="46" fill="#10243e"/>
+  <text x="118" y="857" font-size="19" font-weight="600" fill="#ffffff">Datum</text>
+  <text x="330" y="857" font-size="19" font-weight="600" fill="#ffffff">Transaktion</text>
+  <text x="1122" y="857" font-size="19" font-weight="600" fill="#ffffff" text-anchor="end">Belopp</text>
+
+  <text x="118" y="912" font-size="20" fill="#374151">2026-06-01</text>
+  <text x="330" y="912" font-size="20" fill="#374151">Ingående saldo</text>
+  <text x="1122" y="912" font-size="20" fill="#374151" text-anchor="end">85 402,00 kr</text>
+  <line x1="90" y1="932" x2="1150" y2="932" stroke="#eef1f5" stroke-width="2"/>
+
+  <text x="118" y="968" font-size="20" fill="#374151">2026-06-12</text>
+  <text x="330" y="968" font-size="20" fill="#374151">Inbetalning</text>
+  <text x="1122" y="968" font-size="20" fill="#1a7f37" text-anchor="end">− 2 800,00 kr</text>
+  <line x1="90" y1="988" x2="1150" y2="988" stroke="#eef1f5" stroke-width="2"/>
+
+  <text x="118" y="1024" font-size="20" fill="#374151">2026-06-30</text>
+  <text x="330" y="1024" font-size="20" fill="#374151">Räntekostnad (21,95 % p.a.)</text>
+  <text x="1122" y="1024" font-size="20" fill="#374151" text-anchor="end">1 519,00 kr</text>
+  <line x1="90" y1="1044" x2="1150" y2="1044" stroke="#eef1f5" stroke-width="2"/>
+
+  <text x="118" y="1080" font-size="20" fill="#374151">2026-06-30</text>
+  <text x="330" y="1080" font-size="20" fill="#374151">Aviavgift</text>
+  <text x="1122" y="1080" font-size="20" fill="#374151" text-anchor="end">30,00 kr</text>
+  <line x1="90" y1="1100" x2="1150" y2="1100" stroke="#d1d5db" stroke-width="3"/>
+
+  <text x="330" y="1146" font-size="22" font-weight="700" fill="#111827">Utgående saldo</text>
+  <text x="1122" y="1146" font-size="22" font-weight="700" fill="#111827" text-anchor="end">84 151,00 kr</text>
+
+  <!-- payment box -->
+  <rect x="90" y="1200" width="1060" height="150" fill="#f8fafc" stroke="#dbe3ec" stroke-width="2"/>
+  <text x="130" y="1250" font-size="18" fill="#6b7280" letter-spacing="1.4">ATT BETALA</text>
+  <text x="130" y="1306" font-size="42" font-weight="700" fill="#10243e">2 800,00 kr</text>
+  <text x="700" y="1250" font-size="18" fill="#6b7280" letter-spacing="1.4">FÖRFALLODAG</text>
+  <text x="700" y="1306" font-size="42" font-weight="700" fill="#10243e">2026-07-28</text>
+
+  <!-- footer -->
+  <line x1="90" y1="1420" x2="1150" y2="1420" stroke="#e5e7eb" stroke-width="2"/>
+  <text x="90" y="1462" font-size="18" fill="#6b7280">Effektiv ränta 24,12 % · Kreditgräns 100 000 kr · Löptid 96 mån</text>
+  <text x="90" y="1496" font-size="18" fill="#6b7280">Fictitious document generated for software testing. Any resemblance to a real</text>
+  <text x="90" y="1526" font-size="18" fill="#6b7280">account, person or institution is unintended.</text>
+  <text x="1122" y="1496" font-size="18" fill="#9ca3af" text-anchor="end">Sida 1 av 1</text>
+  <text x="1122" y="1526" font-size="18" fill="#9ca3af" text-anchor="end">fixture: nordax-bank__statement-2026.jpg</text>
+</svg>

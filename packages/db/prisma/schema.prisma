@@ -1,0 +1,415 @@
+// Refinance app — data model.
+//
+// Conventions:
+//  * All money is `Int` minor units (öre) + an explicit currency. Never Float.
+//  * All rates are `Int` basis points (990 = 9.9%). Never Float.
+//  * Status columns are strings validated by the domain state machines
+//    (packages/domain/src/states.ts) rather than DB enums, so the machine has
+//    exactly one home.
+//  * LedgerEntry is append-only. Nothing updates or deletes it.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id String @id @default(uuid())
+
+  // Never store a raw personal number.
+  //   hash -> deterministic, for lookup/upsert
+  //   enc  -> AES-256-GCM, for the authorised read the credit check needs
+  personalNumberHash String  @unique
+  personalNumberEnc  String
+  displayName        String?
+  email              String?
+  phone              String?
+  kycStatus          String  @default("PENDING")
+
+  createdAt DateTime @default(now())
+
+  applications LoanApplication[]
+  sessions     Session[]
+  bankIdOrders BankIdOrder[]
+
+  @@map("customers")
+}
+
+/// Our own session, issued after a completed BankID auth.
+/// BankID authenticates; it does not maintain a session for us.
+model Session {
+  id         String   @id @default(uuid())
+  token      String   @unique
+  customerId String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("sessions")
+}
+
+/// A BankID order — auth or sign.
+///
+/// `orderRef` is bound to a customer/application server-side. A client may
+/// never look up an arbitrary orderRef; that would be an IDOR letting anyone
+/// poll someone else's order.
+model BankIdOrder {
+  id       String @id @default(uuid())
+  orderRef String @unique
+  purpose  String // AUTH | SIGN
+  status   String // PENDING | COMPLETE | FAILED
+
+  autoStartToken String?
+  qrStartToken   String?
+
+  customerId    String?
+  applicationId String?
+
+  /// Signature + OCSP response + user details from a completed order.
+  /// This is the legal evidence that the customer signed the agreement.
+  completionData Json?
+  hintCode       String?
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  customer    Customer?        @relation(fields: [customerId], references: [id])
+  application LoanApplication? @relation(fields: [applicationId], references: [id])
+
+  @@index([applicationId])
+  @@map("bankid_orders")
+}
+
+model LoanApplication {
+  id String @id @default(uuid())
+
+  // NULL until the anonymous web quiz is claimed by a BankID-verified customer.
+  // The whole quiz — lender, statements, KALP, contact — is collected without
+  // any identity; BankID happens only in the separate app, and claiming is what
+  // binds this lead to a real person.
+  customerId String?
+  status     String  @default("DRAFT")
+
+  // Capability token for the anonymous quiz. Mutating a draft (upload, KALP,
+  // contact) requires it, so possession of the unguessable id alone is not
+  // enough — this is what stands in for a session before there is a customer.
+  draftToken String? @unique
+
+  // One-time handoff token minted when the quiz becomes a LEAD. Models the
+  // magic link that would be emailed: the app presents it after BankID auth to
+  // attach the lead to the now-verified customer. Cleared on claim.
+  claimToken String? @unique
+
+  requestedTermMonths Int @default(48)
+
+  // Consolidated totals across every statement on this application.
+  // Refinancing three cards into one loan means these are sums, not one row's
+  // values — existingAprBps is the balance-WEIGHTED average rate.
+  existingBalanceMinor Int?
+  existingAprBps       Int?
+  existingLender       String?
+
+  // --- KALP answers ("Kvar Att Leva På" — the affordability questionnaire) ---
+  // Nullable because they're gathered after the statements are submitted.
+  ownsAccommodation       Boolean?
+  hasSpouse               Boolean?
+  numberOfChildren        Int?
+  monthlyIncomeGrossMinor Int?
+  incomeSource            String?
+  monthlyDebtPaymentMinor Int?
+
+  contactEmail String?
+  contactPhone String?
+
+  currency      String   @default("SEK")
+  correlationId String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  customer       Customer?       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  statements     StatementUpload[]
+  creditDecision CreditDecision?
+  kycCheck       KycCheck?
+  offer          Offer?
+  bankIdOrders   BankIdOrder[]
+  events         ApplicationEvent[]
+
+  @@index([customerId])
+  @@index([status])
+  @@map("loan_applications")
+}
+
+/// Append-only audit of every state transition. Regulators ask "why was this
+/// customer rejected, and when?" — this answers it.
+model ApplicationEvent {
+  id            String   @id @default(uuid())
+  applicationId String
+  fromStatus    String?
+  toStatus      String
+  reason        String?
+  correlationId String?
+  createdAt     DateTime @default(now())
+
+  application LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("application_events")
+}
+
+/// One uploaded statement. An application can carry several — the "cart" —
+/// because consolidating multiple expensive debts into one loan is the point.
+model StatementUpload {
+  id            String @id @default(uuid())
+  applicationId String
+
+  fileRef   String
+  ocrStatus String @default("PENDING") // PENDING | DONE | FAILED
+
+  extractedLender       String?
+  extractedBalanceMinor Int?
+  extractedAprBps       Int?
+  confidence            Float?
+
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+
+  application LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("statement_uploads")
+}
+
+/// The result of a UC consumer report.
+///
+/// Unique on applicationId — that uniqueness IS the idempotency guard. A
+/// retried credit-check job finds this row and returns it instead of pulling
+/// a second (chargeable, footprint-leaving) bureau report.
+model CreditDecision {
+  id            String @id @default(uuid())
+  applicationId String @unique
+
+  bureauScore                 Int
+  riskBand                    String
+  monthlyDisposableIncomeMinor Int
+  decision                    String // APPROVE | REJECT
+  reason                      String
+
+  /// KALP — the statutory affordability assessment.
+  /// Persisted in full because a regulator can ask us to re-derive any
+  /// historic decision, and "we recalculated it today" is not an answer.
+  kalpMinor       Int?
+  stressedAprBps  Int?
+  kalpBreakdown   Json?
+
+  /// True when this pulled a real (hard) inquiry that appears on the
+  /// customer's credit record. Soft score views must not set this.
+  inquiryLogged Boolean @default(false)
+
+  /// Raw bureau response, kept as regulatory evidence for the decision.
+  raw Json?
+
+  createdAt DateTime @default(now())
+
+  application LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@map("credit_decisions")
+}
+
+model KycCheck {
+  id            String @id @default(uuid())
+  applicationId String @unique
+
+  status   String // PASS | FAIL | MANUAL_REVIEW
+  provider String
+  sanctionsHit Boolean @default(false)
+  pepHit       Boolean @default(false)
+  raw      Json?
+
+  createdAt DateTime @default(now())
+
+  application LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@map("kyc_checks")
+}
+
+model Offer {
+  id            String @id @default(uuid())
+  applicationId String @unique
+
+  principalMinor      Int
+  offeredAprBps       Int
+  termMonths          Int
+  monthlyPaymentMinor Int
+  /// Total interest saved vs their existing rate — the product proposition.
+  savingMinor         Int
+  currency            String @default("SEK")
+
+  status    String   @default("OFFERED") // OFFERED | ACCEPTED | DECLINED | EXPIRED
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  /// BankID order that signed this offer.
+  signedByOrderRef String?
+  signedAt         DateTime?
+
+  application LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  loan        Loan?
+
+  @@map("offers")
+}
+
+model Loan {
+  id      String @id @default(uuid())
+  offerId String @unique
+
+  principalMinor Int
+  aprBps         Int
+  termMonths     Int
+  currency       String @default("SEK")
+  status         String @default("DISBURSING")
+
+  correlationId String
+  createdAt     DateTime  @default(now())
+  disbursedAt   DateTime?
+  closedAt      DateTime?
+
+  offer         Offer               @relation(fields: [offerId], references: [id])
+  disbursements Disbursement[]
+  schedule      RepaymentSchedule[]
+  payments      Payment[]
+  ledgerEntries LedgerEntry[]
+
+  @@index([status])
+  @@map("loans")
+}
+
+/// Paying off the customer's old creditor.
+///
+/// `idempotencyKey` is unique. That constraint is the last line of defence:
+/// even if two workers process the same job concurrently, the database
+/// refuses the second insert. Retries cannot double-pay.
+model Disbursement {
+  id     String @id @default(uuid())
+  loanId String
+
+  idempotencyKey String @unique
+  amountMinor    Int
+  currency       String @default("SEK")
+  beneficiary    String // the old lender
+
+  status      String  @default("PENDING") // PENDING | SETTLED | FAILED
+  providerRef String?
+  attempts    Int     @default(0)
+  lastError   String?
+
+  createdAt DateTime  @default(now())
+  settledAt DateTime?
+
+  loan Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@index([loanId])
+  @@map("disbursements")
+}
+
+model RepaymentSchedule {
+  id     String @id @default(uuid())
+  loanId String
+
+  installmentNo      Int
+  dueDate            DateTime
+  principalPartMinor Int
+  interestPartMinor  Int
+  totalMinor         Int
+  balanceAfterMinor  Int
+  status             String @default("DUE") // DUE | PAID | LATE | WRITTEN_OFF
+
+  paidAt DateTime?
+
+  loan     Loan      @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  @@unique([loanId, installmentNo])
+  @@index([dueDate, status])
+  @@map("repayment_schedule")
+}
+
+model Payment {
+  id         String  @id @default(uuid())
+  loanId     String
+  scheduleId String?
+
+  idempotencyKey String @unique
+  amountMinor    Int
+  currency       String @default("SEK")
+  method         String @default("AUTOGIRO")
+
+  status      String  @default("PENDING") // PENDING | SETTLED | FAILED
+  providerRef String?
+
+  createdAt DateTime  @default(now())
+  settledAt DateTime?
+
+  loan     Loan               @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  schedule RepaymentSchedule? @relation(fields: [scheduleId], references: [id])
+
+  @@index([loanId])
+  @@map("payments")
+}
+
+/// Transactional outbox.
+///
+/// The problem it solves: enqueuing a BullMQ job AFTER the database commit is
+/// not atomic. A crash in the gap leaves a committed loan with no disbursement
+/// job — a signed agreement we never act on. Redis is not part of the Postgres
+/// transaction, so we cannot simply enqueue inside it.
+///
+/// Instead we write this row in the SAME transaction as the state change. A
+/// relay then reads PENDING rows and pushes them to BullMQ. If the process dies
+/// before the relay runs, the row is still there and gets picked up on restart.
+/// At-least-once from the outbox to the queue, deduped by the job's own jobId.
+model OutboxEvent {
+  id       String @id @default(uuid())
+  queue    String
+  jobName  String
+  payload  Json
+  /// Custom BullMQ job id for dedupe — carried through so the relay reproduces it.
+  jobId    String?
+
+  status    String  @default("PENDING") // PENDING | DISPATCHING | DISPATCHED
+  attempts  Int     @default(0)
+  lastError String?
+
+  createdAt    DateTime  @default(now())
+  dispatchedAt DateTime?
+
+  @@index([status, createdAt])
+  @@map("outbox_events")
+}
+
+/// Append-only. Every money movement, balanced debits == credits.
+/// The loan balance is projected from these rows, never stored as a counter.
+model LedgerEntry {
+  id     String @id @default(uuid())
+  loanId String
+
+  account       String
+  direction     String // DEBIT | CREDIT
+  amountMinor   Int
+  currency      String @default("SEK")
+  correlationId String
+  memo          String?
+
+  createdAt DateTime @default(now())
+
+  loan Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@index([loanId])
+  @@index([correlationId])
+  @@map("ledger_entries")
+}
